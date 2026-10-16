@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>New Sale</h1>
+<p class="muted">Add items to the cart, then click Complete Sale.</p>
+
+<div class="pos-layout">
+
+    <!-- LEFT: item picker -->
+    <div class="card pos-panel">
+        <h3>Add Item</h3>
+        <label>Medicine</label>
+        <select id="med-select">
+            {% for m in medicines %}
+            <option value="{{ m.id }}"
+                    data-price="{{ m.selling_price }}"
+                    data-name="{{ m.name }}">
+                {{ m.name }} — ${{ '%.2f'|format(m.selling_price) }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <label>Quantity</label>
+        <input type="number" id="qty-input" value="1" min="1">
+
+        <button id="add-btn" class="btn-primary">Add to Cart</button>
+
+        <hr>
+
+        <label>Payment Method</label>
+        <select id="payment-method">
+            <option value="cash">Cash</option>
+            <option value="card">Card</option>
+            <option value="mobile">Mobile</option>
+        </select>
+    </div>
+
+    <!-- RIGHT: cart -->
+    <div class="card pos-panel">
+        <h3>Cart</h3>
+        <table id="cart-table">
+            <thead>
+                <tr><th>Item</th><th>Qty</th><th>Price</th><th>Subtotal</th><th></th></tr>
+            </thead>
+            <tbody id="cart-body">
+                <tr><td colspan="5" class="empty">No items yet</td></tr>
+            </tbody>
+        </table>
+
+        <div class="cart-total">
+            Total: <span id="cart-total">$0.00</span>
+        </div>
+
+        <button id="complete-btn" class="btn-primary" disabled>Complete Sale</button>
+        <p id="status-msg" class="muted"></p>
+    </div>
+</div>
+
+<h2>Recent Sales</h2>
+<table>
+    <tr><th>#</th><th>Date</th><th>Items</th><th>Total</th><th>Profit</th><th>Payment</th></tr>
+    {% for s in recent %}
+    <tr>
+        <td>{{ s.id }}</td>
+        <td>{{ s.date }}</td>
+        <td>{{ s.items|length }}</td>
+        <td>${{ '%.2f'|format(s.total_amount) }}</td>
+        <td>${{ '%.2f'|format(s.profit) }}</td>
+        <td>{{ s.payment_method }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<script>
+    const cart = [];
+    const medSelect = document.getElementById('med-select');
+    const qtyInput = document.getElementById('qty-input');
+    const cartBody = document.getElementById('cart-body');
+    const cartTotal = document.getElementById('cart-total');
+    const completeBtn = document.getElementById('complete-btn');
+    const statusMsg = document.getElementById('status-msg');
+
+    document.getElementById('add-btn').addEventListener('click', () => {
+        const opt = medSelect.selectedOptions[0];
+        const id = parseInt(medSelect.value);
+        const name = opt.dataset.name;
+        const price = parseFloat(opt.dataset.price);
+        const qty = parseInt(qtyInput.value);
+
+        if (qty <= 0) return;
+
+        const existing = cart.find(c => c.medicine_id === id);
+        if (existing) {
+            existing.qty += qty;
+        } else {
+            cart.push({ medicine_id: id, name, price, qty });
+        }
+        qtyInput.value = 1;
+        render();
+    });
+
+    function render() {
+        if (cart.length === 0) {
+            cartBody.innerHTML = '<tr><td colspan="5" class="empty">No items yet</td></tr>';
+            cartTotal.textContent = '$0.00';
+            completeBtn.disabled = true;
+            return;
+        }
+
+        let total = 0;
+        cartBody.innerHTML = cart.map((c, i) => {
+            const sub = c.price * c.qty;
+            total += sub;
+            return `<tr>
+                <td>${c.name}</td>
+                <td>${c.qty}</td>
+                <td>$${c.price.toFixed(2)}</td>
+                <td>$${sub.toFixed(2)}</td>
+                <td><button class="btn-remove" onclick="removeItem(${i})">×</button></td>
+            </tr>`;
+        }).join('');
+
+        cartTotal.textContent = '$' + total.toFixed(2);
+        completeBtn.disabled = false;
+    }
+
+    window.removeItem = (i) => {
+        cart.splice(i, 1);
+        render();
+    };
+
+    completeBtn.addEventListener('click', async () => {
+        completeBtn.disabled = true;
+        statusMsg.textContent = 'Saving…';
+
+        try {
+            const res = await fetch('/new-sale', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    items: cart.map(c => ({ medicine_id: c.medicine_id, qty: c.qty })),
+                    payment_method: document.getElementById('payment-method').value,
+                }),
+            });
+            const data = await res.json();
+
+            if (!data.ok) {
+                statusMsg.textContent = '❌ ' + (data.error || 'Failed');
+                completeBtn.disabled = false;
+                return;
+            }
+
+            statusMsg.textContent = `✅ Sale #${data.sale_id} saved — $${data.total.toFixed(2)}`;
+            cart.length = 0;
+            render();
+            setTimeout(() => location.reload(), 1200);
+        } catch (err) {
+            statusMsg.textContent = '❌ ' + err.message;
+            completeBtn.disabled = false;
+        }
+    });
+</script>
+{% endblock %}

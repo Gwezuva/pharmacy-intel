@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Medicines</h1>
+<table>
+    <tr><th>Name</th><th>Category</th><th>Cost</th><th>Price</th></tr>
+    {% for m in medicines %}
+    <tr>
+        <td>{{ m.name }}</td>
+        <td>{{ m.category }}</td>
+        <td>{{ m.cost_price }}</td>
+        <td>{{ m.selling_price }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

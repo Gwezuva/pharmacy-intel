@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Pharmacy Dashboard</h1>
+<p class="muted">As of {{ today }}</p>
+
+<div class="kpis">
+    <div class="card">
+        <h3>Today's Sales</h3>
+        <p>${{ today_sales }}</p>
+    </div>
+    <div class="card">
+        <h3>Month Revenue</h3>
+        <p>${{ month_revenue }}</p>
+    </div>
+    <div class="card">
+        <h3>Month Profit</h3>
+        <p>${{ month_profit }}</p>
+    </div>
+    <div class="card">
+        <h3>Stock Value</h3>
+        <p>${{ stock_value }}</p>
+    </div>
+</div>
+
+<div class="kpis" style="margin-top:16px;">
+    <div class="card">
+        <h3>Medicines</h3>
+        <p>{{ total_medicines }}</p>
+    </div>
+    <div class="card">
+        <h3>Batches</h3>
+        <p>{{ total_batches }}</p>
+    </div>
+    <div class="card">
+        <h3>Sales Recorded</h3>
+        <p>{{ total_sales }}</p>
+    </div>
+    <div class="card {% if expiry_alert_count %}warn{% endif %}">
+        <h3>Expiry Risk</h3>
+        <p>${{ expiry_value }}</p>
+    </div>
+</div>
+
+<!-- ---------- Charts ---------- -->
+<div class="two-col" style="margin-top: 24px;">
+    <div class="card">
+        <h3 style="text-transform:none; font-size:16px; color:#1e293b;">Sales — Last 30 Days</h3>
+        <canvas id="trendChart" height="140"></canvas>
+    </div>
+    <div class="card">
+        <h3 style="text-transform:none; font-size:16px; color:#1e293b;">Top Products (Profit, This Month)</h3>
+        <canvas id="topChart" height="140"></canvas>
+    </div>
+</div>
+
+<h2>🔴 Stock-Out Forecast</h2>
+{% if stock_alerts %}
+<table>
+    <tr><th>Medicine</th><th>Stock</th><th>Avg/Day</th><th>Days Left</th><th>Reorder</th></tr>
+    {% for a in stock_alerts %}
+    <tr class="{{ 'row-critical' if a.status == 'critical' else 'row-warn' }}">
+        <td>{{ a.medicine }}</td>
+        <td>{{ a.current_stock }}</td>
+        <td>{{ a.avg_daily }}</td>
+        <td><strong>{{ a.days_left }}</strong></td>
+        <td>{{ a.reorder_qty }} units</td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}<p>No stock-out risks. ✅</p>{% endif %}
+
+<h2>🟠 Expiry Alerts (next 60 days)</h2>
+{% if expiry_alerts %}
+<p>Value at risk: <strong>${{ expiry_value }}</strong></p>
+<table>
+    <tr><th>Medicine</th><th>Batch</th><th>Qty</th><th>Expires</th><th>Days</th><th>Value</th></tr>
+    {% for e in expiry_alerts %}
+    <tr>
+        <td>{{ e.medicine }}</td>
+        <td>{{ e.batch_no }}</td>
+        <td>{{ e.quantity }}</td>
+        <td>{{ e.expiry_date }}</td>
+        <td>{{ e.days_to_expiry }}</td>
+        <td>${{ e.value_at_risk }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}<p>No near-expiry stock. ✅</p>{% endif %}
+
+<h2>🏆 Top Products This Month</h2>
+{% if top_products %}
+<table>
+    <tr><th>Product</th><th>Revenue</th><th>Profit</th></tr>
+    {% for p in top_products %}
+    <tr><td>{{ p.name }}</td><td>${{ p.revenue }}</td><td>${{ p.profit }}</td></tr>
+    {% endfor %}
+</table>
+{% else %}<p>No sales this month yet.</p>{% endif %}
+
+<div class="two-col">
+    <div>
+        <h2>🚀 Fast Movers (30d)</h2>
+        <table>
+            <tr><th>Medicine</th><th>Sold</th></tr>
+            {% for f in fast_movers %}
+            <tr><td>{{ f.medicine }}</td><td>{{ f.sold_30 }}</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+    <div>
+        <h2>🐢 Slow Movers (90d = 0)</h2>
+        {% if slow_movers %}
+        <table>
+            <tr><th>Medicine</th><th>Sold 90d</th></tr>
+            {% for s in slow_movers %}
+            <tr><td>{{ s.medicine }}</td><td>{{ s.sold_90 }}</td></tr>
+            {% endfor %}
+        </table>
+        {% else %}<p>No dead stock. ✅</p>{% endif %}
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // ---------- Sales Trend (Line) ----------
+    const trendData = {{ trend | tojson }};
+
+    if (trendData.length) {
+        new Chart(document.getElementById('trendChart'), {
+            type: 'line',
+            data: {
+                labels: trendData.map(d => d.date.slice(5)), // MM-DD
+                datasets: [{
+                    label: 'Sales ($)',
+                    data: trendData.map(d => d.amount),
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 2,
+                    borderWidth: 2,
+                }],
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { callback: v => '$' + v } },
+                    x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+                },
+            },
+        });
+    }
+
+    // ---------- Top Products (Bar) ----------
+    const topData = {{ top_products | tojson }};
+
+    if (topData.length) {
+        new Chart(document.getElementById('topChart'), {
+            type: 'bar',
+            data: {
+                labels: topData.map(p => p.name),
+                datasets: [{
+                    label: 'Profit ($)',
+                    data: topData.map(p => p.profit),
+                    backgroundColor: '#10b981',
+                    borderRadius: 6,
+                }],
+            },
+            options: {
+                responsive: true,
+                indexAxis: 'y', // horizontal bars
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, ticks: { callback: v => '$' + v } },
+                },
+            },
+        });
+    }
+</script>
+{% endblock %}
