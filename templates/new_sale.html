@@ -1,162 +1,184 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>New Sale</h1>
-<p class="muted">Add items to the cart, then click Complete Sale.</p>
 
-<div class="pos-layout">
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Point of Sale</h1>
+    <p class="text-slate-500 mt-1">Search for items to begin a transaction.</p>
+</div>
 
-    <!-- LEFT: item picker -->
-    <div class="card pos-panel">
-        <h3>Add Item</h3>
-        <label>Medicine</label>
-        <select id="med-select">
-            {% for m in medicines %}
-            <option value="{{ m.id }}"
-                    data-price="{{ m.selling_price }}"
-                    data-name="{{ m.name }}">
-                {{ m.name }} — ${{ '%.2f'|format(m.selling_price) }}
-            </option>
-            {% endfor %}
-        </select>
+<div class="flex flex-col xl:flex-row gap-8 items-start">
+    
+    <!-- LEFT PANEL: Search -->
+    <div class="flex-1 w-full">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+            <h3 class="text-xl font-bold text-slate-800 mb-6">Add Medicine</h3>
+            
+            <label class="block text-sm font-medium text-slate-700 mb-2">Search Product</label>
+            <div class="relative mb-6">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <i class="fa-solid fa-magnifying-glass text-slate-400 text-lg"></i>
+                </div>
+                <input type="text" id="med-search" placeholder="Type name (e.g. Paracetamol)..." autocomplete="off" 
+                    class="w-full pl-12 pr-4 py-4 text-lg border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm">
+                <ul id="med-results" class="absolute z-20 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-80 overflow-y-auto hidden"></ul>
+            </div>
 
-        <label>Quantity</label>
-        <input type="number" id="qty-input" value="1" min="1">
-
-        <button id="add-btn" class="btn-primary">Add to Cart</button>
-
-        <hr>
-
-        <label>Payment Method</label>
-        <select id="payment-method">
-            <option value="cash">Cash</option>
-            <option value="card">Card</option>
-            <option value="mobile">Mobile</option>
-        </select>
+            <div class="flex gap-6 items-end">
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Quantity</label>
+                    <input type="number" id="qty-input" value="1" min="1" 
+                        class="w-full px-4 py-3 text-lg border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <button id="add-btn" class="bg-slate-800 hover:bg-slate-900 text-white px-8 py-3.5 rounded-xl font-bold transition-colors shadow-sm text-lg h-[54px]">
+                    Add to Order
+                </button>
+            </div>
+        </div>
     </div>
 
-    <!-- RIGHT: cart -->
-    <div class="card pos-panel">
-        <h3>Cart</h3>
-        <table id="cart-table">
-            <thead>
-                <tr><th>Item</th><th>Qty</th><th>Price</th><th>Subtotal</th><th></th></tr>
-            </thead>
-            <tbody id="cart-body">
-                <tr><td colspan="5" class="empty">No items yet</td></tr>
-            </tbody>
-        </table>
+    <!-- RIGHT PANEL: Cart -->
+    <div class="w-full xl:w-[420px] shrink-0">
+        <form action="/checkout" method="POST" id="checkout-form" class="bg-white rounded-xl shadow-lg border border-slate-200 sticky top-24 flex flex-col h-[calc(100vh-8rem)]">
+            <input type="hidden" name="cart" id="cart-input" value="[]">
+            
+            <div class="px-6 py-5 border-b border-slate-200 bg-slate-50 rounded-t-xl flex justify-between items-center">
+                <h3 class="font-bold text-lg text-slate-800">Current Order</h3>
+                <span id="item-count" class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full">0 items</span>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6">
+                <table class="w-full text-sm">
+                    <tbody id="cart-body" class="divide-y divide-slate-100">
+                        <tr><td colspan="3" class="text-center py-10 text-slate-400 italic">Order is empty</td></tr>
+                    </tbody>
+                </table>
+            </div>
 
-        <div class="cart-total">
-            Total: <span id="cart-total">$0.00</span>
-        </div>
-
-        <button id="complete-btn" class="btn-primary" disabled>Complete Sale</button>
-        <p id="status-msg" class="muted"></p>
+            <div class="p-6 bg-slate-50 border-t border-slate-200 rounded-b-xl">
+                <div class="flex justify-between items-center mb-6">
+                    <span class="text-slate-500 font-medium text-lg">Total</span>
+                    <span id="cart-total" class="text-3xl font-bold text-slate-800">$0.00</span>
+                </div>
+                <button type="submit" id="checkout-btn" disabled class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold text-lg transition-colors shadow-sm flex justify-center items-center">
+                    Proceed to Checkout <i class="fa-solid fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
-<h2>Recent Sales</h2>
-<table>
-    <tr><th>#</th><th>Date</th><th>Items</th><th>Total</th><th>Profit</th><th>Payment</th></tr>
-    {% for s in recent %}
-    <tr>
-        <td>{{ s.id }}</td>
-        <td>{{ s.date }}</td>
-        <td>{{ s.items|length }}</td>
-        <td>${{ '%.2f'|format(s.total_amount) }}</td>
-        <td>${{ '%.2f'|format(s.profit) }}</td>
-        <td>{{ s.payment_method }}</td>
-    </tr>
-    {% endfor %}
-</table>
-
 <script>
+    const medsData = [
+        {% for m in medicines %}
+        { id: {{ m.id }}, name: "{{ m.name }}", price: {{ m.selling_price }} },
+        {% endfor %}
+    ];
+
     const cart = [];
-    const medSelect = document.getElementById('med-select');
+    const searchInput = document.getElementById('med-search');
+    const resultsList = document.getElementById('med-results');
     const qtyInput = document.getElementById('qty-input');
     const cartBody = document.getElementById('cart-body');
     const cartTotal = document.getElementById('cart-total');
-    const completeBtn = document.getElementById('complete-btn');
-    const statusMsg = document.getElementById('status-msg');
+    const checkoutBtn = document.getElementById('checkout-btn');
+    const cartInput = document.getElementById('cart-input');
+    const itemCount = document.getElementById('item-count');
+    let selectedMed = null;
+
+    searchInput.addEventListener('input', () => {
+        const query = searchInput.value.toLowerCase();
+        resultsList.innerHTML = '';
+        selectedMed = null;
+
+        if (!query) { resultsList.classList.add('hidden'); return; }
+
+        const matches = medsData.filter(m => m.name.toLowerCase().includes(query));
+
+        if (matches.length === 0) {
+            resultsList.innerHTML = '<li class="px-6 py-4 text-slate-500 italic">No medicines found</li>';
+        } else {
+            matches.forEach(m => {
+                const li = document.createElement('li');
+                li.className = "px-6 py-4 hover:bg-blue-50 cursor-pointer border-b border-slate-100 last:border-0 transition-colors";
+                li.innerHTML = `<span class="font-bold text-slate-800">${m.name}</span> <span class="text-slate-500 float-right font-medium">$${m.price.toFixed(2)}</span>`;
+                li.addEventListener('click', () => {
+                    searchInput.value = m.name;
+                    selectedMed = m;
+                    resultsList.classList.add('hidden');
+                    qtyInput.focus();
+                    qtyInput.select();
+                });
+                resultsList.appendChild(li);
+            });
+        }
+        resultsList.classList.remove('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !resultsList.contains(e.target)) {
+            resultsList.classList.add('hidden');
+        }
+    });
 
     document.getElementById('add-btn').addEventListener('click', () => {
-        const opt = medSelect.selectedOptions[0];
-        const id = parseInt(medSelect.value);
-        const name = opt.dataset.name;
-        const price = parseFloat(opt.dataset.price);
+        if (!selectedMed) { searchInput.focus(); return; }
         const qty = parseInt(qtyInput.value);
-
         if (qty <= 0) return;
 
-        const existing = cart.find(c => c.medicine_id === id);
-        if (existing) {
-            existing.qty += qty;
-        } else {
-            cart.push({ medicine_id: id, name, price, qty });
-        }
-        qtyInput.value = 1;
-        render();
+        const existing = cart.find(c => c.id === selectedMed.id);
+        if (existing) { existing.qty += qty; } 
+        else { cart.push({ id: selectedMed.id, name: selectedMed.name, price: selectedMed.price, qty }); }
+        
+        searchInput.value = ''; selectedMed = null; qtyInput.value = 1; searchInput.focus(); render();
     });
 
     function render() {
+        cartInput.value = JSON.stringify(cart);
+
         if (cart.length === 0) {
-            cartBody.innerHTML = '<tr><td colspan="5" class="empty">No items yet</td></tr>';
+            cartBody.innerHTML = '<tr><td colspan="3" class="text-center py-10 text-slate-400 italic">Order is empty</td></tr>';
             cartTotal.textContent = '$0.00';
-            completeBtn.disabled = true;
+            checkoutBtn.disabled = true;
+            itemCount.textContent = '0 items';
             return;
         }
 
         let total = 0;
+        let count = 0;
         cartBody.innerHTML = cart.map((c, i) => {
             const sub = c.price * c.qty;
             total += sub;
-            return `<tr>
-                <td>${c.name}</td>
-                <td>${c.qty}</td>
-                <td>$${c.price.toFixed(2)}</td>
-                <td>$${sub.toFixed(2)}</td>
-                <td><button class="btn-remove" onclick="removeItem(${i})">×</button></td>
+            count += c.qty;
+            return `<tr class="group">
+                <td class="py-4">
+                    <p class="font-bold text-slate-800 text-base leading-tight">${c.name}</p>
+                    <p class="text-xs text-slate-500 mt-1">$${c.price.toFixed(2)} / unit</p>
+                </td>
+                <td class="text-center py-4 align-top">
+                    <div class="inline-flex items-center bg-slate-100 rounded-lg">
+                        <button type="button" onclick="updateQty(${i}, -1)" class="px-2 py-1 text-slate-500 hover:text-slate-800"><i class="fa-solid fa-minus text-xs"></i></button>
+                        <span class="px-2 font-bold text-slate-800">${c.qty}</span>
+                        <button type="button" onclick="updateQty(${i}, 1)" class="px-2 py-1 text-slate-500 hover:text-slate-800"><i class="fa-solid fa-plus text-xs"></i></button>
+                    </div>
+                </td>
+                <td class="text-right py-4 align-top">
+                    <span class="font-bold text-slate-800 text-base">$${sub.toFixed(2)}</span>
+                    <button type="button" onclick="removeItem(${i})" class="text-red-400 hover:text-red-600 ml-3 mt-1"><i class="fa-solid fa-trash-can"></i></button>
+                </td>
             </tr>`;
         }).join('');
 
         cartTotal.textContent = '$' + total.toFixed(2);
-        completeBtn.disabled = false;
+        itemCount.textContent = count + ' items';
+        checkoutBtn.disabled = false;
     }
 
-    window.removeItem = (i) => {
-        cart.splice(i, 1);
+    window.updateQty = (i, change) => {
+        cart[i].qty += change;
+        if (cart[i].qty <= 0) cart.splice(i, 1);
         render();
     };
 
-    completeBtn.addEventListener('click', async () => {
-        completeBtn.disabled = true;
-        statusMsg.textContent = 'Saving…';
-
-        try {
-            const res = await fetch('/new-sale', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    items: cart.map(c => ({ medicine_id: c.medicine_id, qty: c.qty })),
-                    payment_method: document.getElementById('payment-method').value,
-                }),
-            });
-            const data = await res.json();
-
-            if (!data.ok) {
-                statusMsg.textContent = '❌ ' + (data.error || 'Failed');
-                completeBtn.disabled = false;
-                return;
-            }
-
-            statusMsg.textContent = `✅ Sale #${data.sale_id} saved — $${data.total.toFixed(2)}`;
-            cart.length = 0;
-            render();
-            setTimeout(() => location.reload(), 1200);
-        } catch (err) {
-            statusMsg.textContent = '❌ ' + err.message;
-            completeBtn.disabled = false;
-        }
-    });
+    window.removeItem = (i) => { cart.splice(i, 1); render(); };
 </script>
 {% endblock %}

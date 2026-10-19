@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center;">
+    <h1>Sale #{{ sale.id }}</h1>
+    <a href="/new-sale" class="btn-export">⬅️ Back to POS</a>
+</div>
+
+<p class="muted">
+    Date: <strong>{{ sale.date }}</strong> | 
+    Payment: <strong>{{ sale.payment_method|capitalize }}</strong>
+</p>
+
+<div class="kpis" style="margin-top: 24px; grid-template-columns: repeat(2, 1fr); max-width: 600px;">
+    <div class="card">
+        <h3>Total Amount</h3>
+        <p>${{ '%.2f'|format(sale.total_amount) }}</p>
+    </div>
+    <div class="card">
+        <h3>Total Profit</h3>
+        <p>${{ '%.2f'|format(sale.profit) }}</p>
+    </div>
+</div>
+
+<h2>Items Purchased</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Medicine</th>
+            <th>Qty</th>
+            <th>Unit Price</th>
+            <th>Subtotal</th>
+            <th>Profit</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in sale.items %}
+        <tr>
+            <td>{{ item.medicine.name }}</td>
+            <td>{{ item.qty }}</td>
+            <td>${{ '%.2f'|format(item.unit_price) }}</td>
+            <td>${{ '%.2f'|format(item.unit_price * item.qty) }}</td>
+            <td>${{ '%.2f'|format((item.unit_price - item.cost_price) * item.qty) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,15 +1,54 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Medicines</h1>
-<table>
-    <tr><th>Name</th><th>Category</th><th>Cost</th><th>Price</th></tr>
-    {% for m in medicines %}
-    <tr>
-        <td>{{ m.name }}</td>
-        <td>{{ m.category }}</td>
-        <td>{{ m.cost_price }}</td>
-        <td>{{ m.selling_price }}</td>
-    </tr>
-    {% endfor %}
-</table>
+
+<div class="flex justify-between items-end mb-8">
+    <div>
+        <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Inventory</h1>
+        <p class="text-slate-500 mt-1">Manage your medicine catalog and stock levels.</p>
+    </div>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <table class="w-full text-left border-collapse">
+        <thead>
+            <tr class="bg-slate-50 text-xs text-slate-500 border-b border-slate-200">
+                <th class="px-6 py-4 font-semibold">Medicine Name</th>
+                <th class="px-6 py-4 font-semibold">Category</th>
+                <th class="px-6 py-4 font-semibold">Cost</th>
+                <th class="px-6 py-4 font-semibold">Selling Price</th>
+                <th class="px-6 py-4 font-semibold">Total Stock</th>
+                <th class="px-6 py-4 font-semibold text-right">Action</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for m in medicines %}
+            {% set stock = m.batches|selectattr('expiry_date', '>', today)|sum(attribute='quantity') %}
+            <tr class="hover:bg-slate-50 transition-colors">
+                <td class="px-6 py-4 font-medium text-slate-800">{{ m.name }}</td>
+                <td class="px-6 py-4">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+                        {{ m.category }}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-slate-600">${{ '%.2f'|format(m.cost_price) }}</td>
+                <td class="px-6 py-4 text-slate-600">${{ '%.2f'|format(m.selling_price) }}</td>
+                <td class="px-6 py-4">
+                    {% if stock == 0 %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Out of Stock</span>
+                    {% elif stock <= m.reorder_level %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">{{ stock }} (Low)</span>
+                    {% else %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">{{ stock }}</span>
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 text-right">
+                    <a href="/medicine/{{ m.id }}" class="text-sm font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-md transition-colors">
+                        Manage Stock
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endblock %}

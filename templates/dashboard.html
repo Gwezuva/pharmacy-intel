@@ -1,180 +1,222 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Pharmacy Dashboard</h1>
-<p class="muted">As of {{ today }}</p>
 
-<div class="kpis">
-    <div class="card">
-        <h3>Today's Sales</h3>
-        <p>${{ today_sales }}</p>
-    </div>
-    <div class="card">
-        <h3>Month Revenue</h3>
-        <p>${{ month_revenue }}</p>
-    </div>
-    <div class="card">
-        <h3>Month Profit</h3>
-        <p>${{ month_profit }}</p>
-    </div>
-    <div class="card">
-        <h3>Stock Value</h3>
-        <p>${{ stock_value }}</p>
-    </div>
-</div>
-
-<div class="kpis" style="margin-top:16px;">
-    <div class="card">
-        <h3>Medicines</h3>
-        <p>{{ total_medicines }}</p>
-    </div>
-    <div class="card">
-        <h3>Batches</h3>
-        <p>{{ total_batches }}</p>
-    </div>
-    <div class="card">
-        <h3>Sales Recorded</h3>
-        <p>{{ total_sales }}</p>
-    </div>
-    <div class="card {% if expiry_alert_count %}warn{% endif %}">
-        <h3>Expiry Risk</h3>
-        <p>${{ expiry_value }}</p>
-    </div>
-</div>
-
-<!-- ---------- Charts ---------- -->
-<div class="two-col" style="margin-top: 24px;">
-    <div class="card">
-        <h3 style="text-transform:none; font-size:16px; color:#1e293b;">Sales — Last 30 Days</h3>
-        <canvas id="trendChart" height="140"></canvas>
-    </div>
-    <div class="card">
-        <h3 style="text-transform:none; font-size:16px; color:#1e293b;">Top Products (Profit, This Month)</h3>
-        <canvas id="topChart" height="140"></canvas>
-    </div>
-</div>
-
-<h2>🔴 Stock-Out Forecast</h2>
-{% if stock_alerts %}
-<table>
-    <tr><th>Medicine</th><th>Stock</th><th>Avg/Day</th><th>Days Left</th><th>Reorder</th></tr>
-    {% for a in stock_alerts %}
-    <tr class="{{ 'row-critical' if a.status == 'critical' else 'row-warn' }}">
-        <td>{{ a.medicine }}</td>
-        <td>{{ a.current_stock }}</td>
-        <td>{{ a.avg_daily }}</td>
-        <td><strong>{{ a.days_left }}</strong></td>
-        <td>{{ a.reorder_qty }} units</td>
-    </tr>
-    {% endfor %}
-</table>
-{% else %}<p>No stock-out risks. ✅</p>{% endif %}
-
-<h2>🟠 Expiry Alerts (next 60 days)</h2>
-{% if expiry_alerts %}
-<p>Value at risk: <strong>${{ expiry_value }}</strong></p>
-<table>
-    <tr><th>Medicine</th><th>Batch</th><th>Qty</th><th>Expires</th><th>Days</th><th>Value</th></tr>
-    {% for e in expiry_alerts %}
-    <tr>
-        <td>{{ e.medicine }}</td>
-        <td>{{ e.batch_no }}</td>
-        <td>{{ e.quantity }}</td>
-        <td>{{ e.expiry_date }}</td>
-        <td>{{ e.days_to_expiry }}</td>
-        <td>${{ e.value_at_risk }}</td>
-    </tr>
-    {% endfor %}
-</table>
-{% else %}<p>No near-expiry stock. ✅</p>{% endif %}
-
-<h2>🏆 Top Products This Month</h2>
-{% if top_products %}
-<table>
-    <tr><th>Product</th><th>Revenue</th><th>Profit</th></tr>
-    {% for p in top_products %}
-    <tr><td>{{ p.name }}</td><td>${{ p.revenue }}</td><td>${{ p.profit }}</td></tr>
-    {% endfor %}
-</table>
-{% else %}<p>No sales this month yet.</p>{% endif %}
-
-<div class="two-col">
+<!-- Header -->
+<div class="flex justify-between items-end mb-8">
     <div>
-        <h2>🚀 Fast Movers (30d)</h2>
-        <table>
-            <tr><th>Medicine</th><th>Sold</th></tr>
+        <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Overview</h1>
+        <p class="text-slate-500 mt-1">As of {{ today }}</p>
+    </div>
+    <a href="/new-sale" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors flex items-center shadow-sm">
+        <i class="fa-solid fa-plus mr-2"></i> New Sale
+    </a>
+</div>
+
+<!-- KPI Grid Row 1 -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-blue-500">
+        <p class="text-sm font-medium text-slate-500 mb-1">Today's Sales</p>
+        <h3 class="text-3xl font-bold text-slate-800">${{ today_sales }}</h3>
+    </div>
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-indigo-500">
+        <p class="text-sm font-medium text-slate-500 mb-1">Month Revenue</p>
+        <h3 class="text-3xl font-bold text-slate-800">${{ month_revenue }}</h3>
+    </div>
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-emerald-500">
+        <p class="text-sm font-medium text-slate-500 mb-1">Month Profit</p>
+        <h3 class="text-3xl font-bold text-slate-800">${{ month_profit }}</h3>
+    </div>
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 border-l-4 {% if expiry_alert_count %}border-l-amber-500{% else %}border-l-slate-300{% endif %}">
+        <p class="text-sm font-medium text-slate-500 mb-1">Expiry Risk</p>
+        <h3 class="text-3xl font-bold {% if expiry_alert_count %}text-amber-600{% else %}text-slate-800{% endif %}">${{ expiry_value }}</h3>
+    </div>
+</div>
+
+<!-- KPI Grid Row 2 -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <p class="text-sm font-medium text-slate-500 mb-1">Total Medicines</p>
+        <h3 class="text-3xl font-bold text-slate-800">{{ total_medicines }}</h3>
+    </div>
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <p class="text-sm font-medium text-slate-500 mb-1">Active Batches</p>
+        <h3 class="text-3xl font-bold text-slate-800">{{ total_batches }}</h3>
+    </div>
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <p class="text-sm font-medium text-slate-500 mb-1">Sales Recorded</p>
+        <h3 class="text-3xl font-bold text-slate-800">{{ total_sales }}</h3>
+    </div>
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <p class="text-sm font-medium text-slate-500 mb-1">Total Stock Value</p>
+        <h3 class="text-3xl font-bold text-slate-800">${{ stock_value }}</h3>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <h3 class="font-semibold text-slate-800 mb-4">Sales Trend (30 Days)</h3>
+        <canvas id="trendChart" height="100"></canvas>
+    </div>
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <h3 class="font-semibold text-slate-800 mb-4">Top Products by Profit</h3>
+        <canvas id="topChart" height="100"></canvas>
+    </div>
+</div>
+
+<!-- Tables Area -->
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8">
+    
+    <!-- Stock Alerts -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-6 py-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+            <h3 class="font-bold text-slate-800 flex items-center">
+                <i class="fa-solid fa-triangle-exclamation text-red-500 mr-2"></i> Stock-Out Forecast
+            </h3>
+        </div>
+        <div class="p-0">
+            {% if stock_alerts %}
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-white text-xs text-slate-500 border-b border-slate-200">
+                        <th class="px-6 py-3 font-medium">Medicine</th>
+                        <th class="px-6 py-3 font-medium">Stock</th>
+                        <th class="px-6 py-3 font-medium">Days Left</th>
+                        <th class="px-6 py-3 font-medium">Reorder</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for a in stock_alerts %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-800">{{ a.medicine }}</td>
+                        <td class="px-6 py-4 text-slate-600">{{ a.current_stock }}</td>
+                        <td class="px-6 py-4">
+                            {% if a.status == 'critical' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    {{ a.days_left }} days
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                    {{ a.days_left }} days
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-blue-600 font-medium">{{ a.reorder_qty }} units</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}<p class="p-6 text-slate-500 text-sm">No stock-out risks detected.</p>{% endif %}
+        </div>
+    </div>
+
+    <!-- Expiry Alerts -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-6 py-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+            <h3 class="font-bold text-slate-800 flex items-center">
+                <i class="fa-solid fa-clock text-amber-500 mr-2"></i> Expiry Alerts
+            </h3>
+            <a href="/export/expiry" class="text-sm font-medium text-blue-600 hover:text-blue-800">Export CSV</a>
+        </div>
+        <div class="p-0">
+            {% if expiry_alerts %}
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-white text-xs text-slate-500 border-b border-slate-200">
+                        <th class="px-4 py-3 font-medium">Medicine</th>
+                        <th class="px-4 py-3 font-medium">Batch</th>
+                        <th class="px-4 py-3 font-medium">Qty</th>
+                        <th class="px-4 py-3 font-medium">Expiry Date</th>
+                        <th class="px-4 py-3 font-medium">Days Left</th>
+                        <th class="px-4 py-3 font-medium text-right">Value</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for e in expiry_alerts %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-4 py-3 font-medium text-slate-800 text-sm">{{ e.medicine }}</td>
+                        <td class="px-4 py-3 text-slate-500 text-sm">{{ e.batch_no }}</td>
+                        <td class="px-4 py-3 text-slate-600 text-sm">{{ e.quantity }}</td>
+                        <td class="px-4 py-3 text-slate-600 text-sm">{{ e.expiry_date }}</td>
+                        <td class="px-4 py-3">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {% if e.days_to_expiry <= 30 %}bg-red-100 text-red-800{% else %}bg-amber-100 text-amber-800{% endif %}">
+                                {{ e.days_to_expiry }} days
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 font-medium text-amber-600 text-sm text-right">${{ e.value_at_risk }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}<p class="p-6 text-slate-500 text-sm">No near-expiry stock.</p>{% endif %}
+        </div>
+    </div>
+
+</div>
+
+<!-- Fast/Slow Movers -->
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8">
+    <!-- Fast Movers -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <h3 class="font-bold text-slate-800 mb-4 flex items-center"><i class="fa-solid fa-arrow-trend-up text-emerald-500 mr-2"></i> Fast Movers (30d)</h3>
+        <div class="space-y-4">
             {% for f in fast_movers %}
-            <tr><td>{{ f.medicine }}</td><td>{{ f.sold_30 }}</td></tr>
+            <div class="flex justify-between items-center pb-2 border-b border-slate-100 last:border-0">
+                <span class="text-slate-700 font-medium">{{ f.medicine }}</span>
+                <span class="text-sm text-slate-500 bg-slate-100 px-2 py-1 rounded">{{ f.sold_30 }} sold</span>
+            </div>
             {% endfor %}
-        </table>
+        </div>
     </div>
-    <div>
-        <h2>🐢 Slow Movers (90d = 0)</h2>
+    <!-- Slow Movers -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <h3 class="font-bold text-slate-800 mb-4 flex items-center"><i class="fa-solid fa-arrow-trend-down text-slate-400 mr-2"></i> Slow Movers (90d)</h3>
         {% if slow_movers %}
-        <table>
-            <tr><th>Medicine</th><th>Sold 90d</th></tr>
+        <div class="space-y-4">
             {% for s in slow_movers %}
-            <tr><td>{{ s.medicine }}</td><td>{{ s.sold_90 }}</td></tr>
+            <div class="flex justify-between items-center pb-2 border-b border-slate-100 last:border-0">
+                <span class="text-slate-700 font-medium">{{ s.medicine }}</span>
+                <span class="text-sm text-red-500 bg-red-50 px-2 py-1 rounded">Dead stock</span>
+            </div>
             {% endfor %}
-        </table>
-        {% else %}<p>No dead stock. ✅</p>{% endif %}
+        </div>
+        {% else %}<p class="text-slate-500 text-sm">No dead stock. ✅</p>{% endif %}
     </div>
+</div>
+
+<div class="text-center mt-10 mb-6">
+    <a href="/export/sales" class="inline-flex items-center px-6 py-3 border border-slate-300 shadow-sm text-sm font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 transition-colors">
+        <i class="fa-solid fa-file-csv mr-2 text-slate-400"></i> Export Full Sales History
+    </a>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-    // ---------- Sales Trend (Line) ----------
     const trendData = {{ trend | tojson }};
-
     if (trendData.length) {
         new Chart(document.getElementById('trendChart'), {
             type: 'line',
             data: {
-                labels: trendData.map(d => d.date.slice(5)), // MM-DD
+                labels: trendData.map(d => d.date.slice(5)),
                 datasets: [{
-                    label: 'Sales ($)',
-                    data: trendData.map(d => d.amount),
-                    borderColor: '#2563eb',
-                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                    fill: true,
-                    tension: 0.35,
-                    pointRadius: 2,
-                    borderWidth: 2,
+                    label: 'Sales ($)', data: trendData.map(d => d.amount),
+                    borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2,
                 }],
             },
-            options: {
-                responsive: true,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, ticks: { callback: v => '$' + v } },
-                    x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
-                },
-            },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
         });
     }
 
-    // ---------- Top Products (Bar) ----------
     const topData = {{ top_products | tojson }};
-
     if (topData.length) {
         new Chart(document.getElementById('topChart'), {
             type: 'bar',
             data: {
                 labels: topData.map(p => p.name),
-                datasets: [{
-                    label: 'Profit ($)',
-                    data: topData.map(p => p.profit),
-                    backgroundColor: '#10b981',
-                    borderRadius: 6,
-                }],
+                datasets: [{ label: 'Profit ($)', data: topData.map(p => p.profit), backgroundColor: '#10b981', borderRadius: 4 }],
             },
-            options: {
-                responsive: true,
-                indexAxis: 'y', // horizontal bars
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { beginAtZero: true, ticks: { callback: v => '$' + v } },
-                },
-            },
+            options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } } },
         });
     }
 </script>
