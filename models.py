@@ -1,7 +1,9 @@
 from flask_sqlalchemy import SQLAlchemy
+from flask_bcrypt import Bcrypt
 from datetime import date
 
 db = SQLAlchemy()
+bcrypt = Bcrypt()
 
 
 class Supplier(db.Model):
@@ -61,3 +63,13 @@ class SaleItem(db.Model):
     qty = db.Column(db.Integer, default=1)
     unit_price = db.Column(db.Float, default=0.0)
     cost_price = db.Column(db.Float, default=0.0)
+
+
+class User(db.Model):
+    __tablename__ = "users"
+    id = db.Column(db.Integer, primary_key=True)
+    full_name = db.Column(db.String(100), nullable=False)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    role = db.Column(db.String(20), default="cashier")
+    is_active = db.Column(db.Boolean, default=True)
