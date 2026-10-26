@@ -1,12 +1,17 @@
 import os
 from dotenv import load_dotenv
 
-# Load variables from the .env file
 load_dotenv()
 
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "fallback-secret-key")
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", "sqlite:///pharmacy.db")
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-
     
+    # Get the database URL
+    uri = os.environ.get("DATABASE_URL", "sqlite:///pharmacy.db")
+    
+    # Fix for Render: SQLAlchemy requires 'postgresql://', not 'postgres://'
+    if uri.startswith("postgres://"):
+        uri = uri.replace("postgres://", "postgresql://", 1)
+        
+    SQLALCHEMY_DATABASE_URI = uri
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
