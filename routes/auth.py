@@ -24,24 +24,27 @@ def admin_required(f):
 def login():
     error = None
     if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "").strip()
-        
-        user = User.query.filter_by(username=username).first()
-        
-        if user and user.is_active and bcrypt.check_password_hash(user.password_hash, password):
-            session['logged_in'] = True
-            session['user_id'] = user.id
-            session['username'] = user.username
-            session['role'] = user.role
+        try:
+            username = request.form.get("username", "").strip()
+            password = request.form.get("password", "").strip()
             
-            # --- THE FIX: Send cashiers to POS, admins to Dashboard ---
-            if user.role == 'admin':
-                return redirect(url_for('main.dashboard'))
+            user = User.query.filter_by(username=username).first()
+            
+            if user and user.is_active and bcrypt.check_password_hash(user.password_hash, password):
+                session['logged_in'] = True
+                session['user_id'] = user.id
+                session['username'] = user.username
+                session['role'] = user.role
+                
+                if user.role == 'admin':
+                    return redirect(url_for('main.dashboard'))
+                else:
+                    return redirect(url_for('pos.new_sale'))
             else:
-                return redirect(url_for('pos.new_sale'))
-        else:
-            error = "Invalid credentials or inactive account. Please try again."
+                error = "Invalid credentials or inactive account. Please try again."
+        except Exception as e:
+            # THIS IS THE MAGIC LINE: It will print the exact error on your screen
+            return f"<h1>System Error Debug</h1><p style='color:red; font-size:20px;'>{str(e)}</p>"
             
     return render_template("login.html", error=error)
 
