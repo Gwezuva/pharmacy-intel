@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex justify-between items-end mb-8">
+    <div>
+        <h1 class="text-3xl font-bold text-slate-800 tracking-tight">{{ supplier.name }}</h1>
+        <p class="text-slate-500 mt-1">Contact: {{ supplier.contact }} | Lead Time: {{ supplier.lead_time_days }} days</p>
+    </div>
+    <div class="flex gap-3">
+        <a href="/suppliers" class="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm">Back</a>
+        <a href="/supplier/{{ supplier.id }}/purchase-order" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center">
+            <i class="fa-solid fa-file-invoice mr-2"></i> Generate PO
+        </a>
+    </div>
+</div>
+
+<div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-8 flex items-end gap-4">
+    <div class="flex-1">
+        <label class="block text-sm font-medium text-slate-700 mb-1">Link a New Medicine to this Supplier</label>
+        <select name="medicine_id" form="add-med-form" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            <option value="">-- Select Medicine --</option>
+            {% for m in unassigned_meds %}
+            <option value="{{ m.id }}">{{ m.name }} (Current Supplier: {{ m.supplier.name if m.supplier else 'None' }})</option>
+            {% endfor %}
+        </select>
+    </div>
+    <form id="add-med-form" action="/supplier/{{ supplier.id }}/add-medicine" method="POST">
+        <button type="submit" class="bg-slate-800 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-slate-900 transition-colors">Link Medicine</button>
+    </form>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <table class="w-full text-left border-collapse">
+        <thead class="bg-slate-50 border-b border-slate-200">
+            <tr>
+                <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Medicine</th>
+                <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Unit Cost (Editable)</th>
+                <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Current Stock</th>
+                <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Status</th>
+                <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Action</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for m in medicines %}
+            <tr class="hover:bg-slate-50 transition-colors">
+                <td class="px-6 py-4 font-medium text-slate-800">{{ m.name }}</td>
+                <td class="px-6 py-4">
+                    <!-- Inline Edit Price Form -->
+                    <form action="/supplier/{{ supplier.id }}/update-price/{{ m.id }}" method="POST" class="flex items-center gap-2">
+                        <span class="text-slate-500">$</span>
+                        <input type="number" step="0.01" name="new_cost" value="{{ '%.2f'|format(m.cost) }}" class="w-20 px-2 py-1 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 text-sm">
+                        <button type="submit" class="text-xs bg-slate-800 text-white px-2 py-1 rounded hover:bg-slate-900 transition-colors">Save</button>
+                    </form>
+                </td>
+                <td class="px-6 py-4 font-bold text-slate-800">{{ m.stock }}</td>
+                <td class="px-6 py-4">
+                    {% if m.needs_order %}
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Needs Restock</span>
+                    {% else %}
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">Sufficient</span>
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4">
+                    <a href="/supplier/{{ supplier.id }}/remove-medicine/{{ m.id }}" class="text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded transition-colors">Unlink</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

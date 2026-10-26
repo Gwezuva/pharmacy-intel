@@ -16,12 +16,18 @@ def create_app():
     from routes.inventory import inventory_bp
     from routes.pos import pos_bp
     from routes.users import users_bp
+    from routes.api import api_bp
+    from routes.suppliers import suppliers_bp
+    from routes.pricing import pricing_bp  # <-- Added
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(inventory_bp)
     app.register_blueprint(pos_bp)
     app.register_blueprint(users_bp)
+    app.register_blueprint(api_bp)
+    app.register_blueprint(suppliers_bp)
+    app.register_blueprint(pricing_bp)  # <-- Added
 
     return app
 

@@ -12,6 +12,14 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get('role') != 'admin':
+            return "Access Denied: Admins Only", 403
+        return f(*args, **kwargs)
+    return decorated_function
+
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     error = None
@@ -19,16 +27,19 @@ def login():
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
         
-        # Query the database for the user
         user = User.query.filter_by(username=username).first()
         
-        # Check if user exists, account is active, and password is correct
         if user and user.is_active and bcrypt.check_password_hash(user.password_hash, password):
             session['logged_in'] = True
             session['user_id'] = user.id
             session['username'] = user.username
             session['role'] = user.role
-            return redirect(url_for('main.dashboard'))
+            
+            # --- THE FIX: Send cashiers to POS, admins to Dashboard ---
+            if user.role == 'admin':
+                return redirect(url_for('main.dashboard'))
+            else:
+                return redirect(url_for('pos.new_sale'))
         else:
             error = "Invalid credentials or inactive account. Please try again."
             
@@ -36,5 +47,5 @@ def login():
 
 @auth_bp.route("/logout")
 def logout():
-    session.clear() # Clears all session data securely
+    session.clear()
     return redirect(url_for('auth.login'))

@@ -19,7 +19,6 @@
 
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        /* Custom scrollbar for a premium feel */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -30,15 +29,12 @@
 
     <!-- SIDEBAR -->
     <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-20">
-        <!-- Logo -->
         <div class="h-20 flex items-center px-4 border-b border-slate-800">
             <i class="fa-solid fa-hospital text-blue-400 text-2xl mr-3"></i>
             <h1 class="text-sm font-bold tracking-wider leading-tight">Makumbe District<br>Hospital Pharmacy</h1>
         </div>
 
-        <!-- Navigation Links -->
-        <nav class="flex-1 px-4 py-6 space-y-2">
-            <!-- Only Admins can see the Dashboard -->
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
             {% if session.get('role') == 'admin' %}
             <a href="/" class="flex items-center px-4 py-3 rounded-lg transition-colors {{ 'bg-blue-600 text-white' if request.path == '/' else 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
                 <i class="fa-solid fa-chart-line w-6"></i>
@@ -46,7 +42,6 @@
             </a>
             {% endif %}
             
-            <!-- Everyone can see POS and Inventory -->
             <a href="/new-sale" class="flex items-center px-4 py-3 rounded-lg transition-colors {{ 'bg-blue-600 text-white' if request.path == '/new-sale' else 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
                 <i class="fa-solid fa-cash-register w-6"></i>
                 <span class="font-medium">Point of Sale</span>
@@ -57,8 +52,17 @@
                 <span class="font-medium">Inventory</span>
             </a>
 
-            <!-- Only Admins can see Manage Staff -->
             {% if session.get('role') == 'admin' %}
+            <a href="/pricing" class="flex items-center px-4 py-3 rounded-lg transition-colors {{ 'bg-blue-600 text-white' if request.path == '/pricing' else 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                <i class="fa-solid fa-tags w-6"></i>
+                <span class="font-medium">Pricing & Profit</span>
+            </a>
+            
+            <a href="/suppliers" class="flex items-center px-4 py-3 rounded-lg transition-colors {{ 'bg-blue-600 text-white' if request.path == '/suppliers' else 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                <i class="fa-solid fa-truck-fast w-6"></i>
+                <span class="font-medium">Suppliers</span>
+            </a>
+
             <a href="/staff" class="flex items-center px-4 py-3 rounded-lg transition-colors {{ 'bg-blue-600 text-white' if request.path == '/staff' else 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
                 <i class="fa-solid fa-users w-6"></i>
                 <span class="font-medium">Manage Staff</span>
@@ -66,7 +70,6 @@
             {% endif %}
         </nav>
 
-        <!-- Sidebar Footer (Sign Out) -->
         <div class="p-4 border-t border-slate-800">
             <a href="/logout" class="flex items-center px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-red-400 rounded-lg transition-colors mb-2">
                 <i class="fa-solid fa-right-from-bracket w-6"></i>
@@ -78,7 +81,6 @@
 
     <!-- MAIN CONTENT AREA -->
     <main class="flex-1 overflow-y-auto">
-        <!-- TOP HEADER -->
         <header class="bg-white h-20 px-8 flex items-center justify-between shadow-sm sticky top-0 z-10">
             <h2 class="text-2xl font-semibold text-slate-800">Makumbe District Hospital Pharmacy</h2>
             <div class="flex items-center space-x-4">
@@ -86,18 +88,41 @@
                     <i class="fa-solid fa-user"></i>
                 </div>
                 <div>
-                    <!-- Dynamically shows the logged-in user's name and role -->
                     <p class="text-sm font-semibold text-slate-700">{{ session.get('username')|capitalize }}</p>
                     <p class="text-xs text-slate-500">{{ session.get('role')|capitalize }}</p>
                 </div>
             </div>
         </header>
 
-        <!-- PAGE CONTENT -->
         <div class="p-8 pb-20">
             {% block content %}{% endblock %}
         </div>
     </main>
 
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-3"></div>
+
+    <script>
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const bgColor = type === 'success' ? 'bg-emerald-600' : 'bg-red-600';
+            const icon = type === 'success' ? 'fa-check-circle' : 'fa-circle-exclamation';
+            
+            toast.className = `${bgColor} text-white px-6 py-4 rounded-lg shadow-xl flex items-center transform transition-all duration-300 translate-x-full opacity-0`;
+            toast.innerHTML = `<i class="fa-solid ${icon} mr-3 text-lg"></i> <span class="font-medium">${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
 </body>
 </html>

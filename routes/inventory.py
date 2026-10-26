@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for
 from models import db, Medicine, Batch
-from routes.auth import login_required
+from routes.auth import login_required, admin_required
 from datetime import date
 import random
 
@@ -22,6 +22,7 @@ def medicine_detail(med_id):
 
 @inventory_bp.route("/medicine/<int:med_id>/restock", methods=["POST"])
 @login_required
+@admin_required  # <--- CASHIERS CANNOT DO THIS
 def restock(med_id):
     med = Medicine.query.get_or_404(med_id)
     qty = int(request.form.get("quantity", 0))
@@ -38,4 +39,4 @@ def restock(med_id):
         )
         db.session.add(new_batch)
         db.session.commit()
-    return redirect(url_for("inventory.medicine_detail", med_id=med.id)) # Notice 'inventory.'
+    return redirect(url_for("inventory.medicine_detail", med_id=med.id))

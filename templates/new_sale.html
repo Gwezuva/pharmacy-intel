@@ -3,7 +3,7 @@
 
 <div class="mb-8">
     <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Point of Sale</h1>
-    <p class="text-slate-500 mt-1">Search for items to begin a transaction.</p>
+    <p class="text-slate-500 mt-1">Makumbe District Hospital Pharmacy</p>
 </div>
 
 <div class="flex flex-col xl:flex-row gap-8 items-start">
@@ -18,8 +18,12 @@
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <i class="fa-solid fa-magnifying-glass text-slate-400 text-lg"></i>
                 </div>
-                <input type="text" id="med-search" placeholder="Type name (e.g. Paracetamol)..." autocomplete="off" 
+                <input type="text" id="med-search" placeholder="Type to search..." autocomplete="off" 
                     class="w-full pl-12 pr-4 py-4 text-lg border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm">
+                <!-- Loading Spinner -->
+                <div id="search-spinner" class="absolute inset-y-0 right-4 flex items-center hidden">
+                    <i class="fa-solid fa-circle-notch fa-spin text-blue-500"></i>
+                </div>
                 <ul id="med-results" class="absolute z-20 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-80 overflow-y-auto hidden"></ul>
             </div>
 
@@ -68,15 +72,10 @@
 </div>
 
 <script>
-    const medsData = [
-        {% for m in medicines %}
-        { id: {{ m.id }}, name: "{{ m.name }}", price: {{ m.selling_price }} },
-        {% endfor %}
-    ];
-
     const cart = [];
     const searchInput = document.getElementById('med-search');
     const resultsList = document.getElementById('med-results');
+    const searchSpinner = document.getElementById('search-spinner');
     const qtyInput = document.getElementById('qty-input');
     const cartBody = document.getElementById('cart-body');
     const cartTotal = document.getElementById('cart-total');
@@ -85,33 +84,60 @@
     const itemCount = document.getElementById('item-count');
     let selectedMed = null;
 
+    // Real-Time API Search with Debounce
+    let debounceTimer;
     searchInput.addEventListener('input', () => {
-        const query = searchInput.value.toLowerCase();
+        const query = searchInput.value.trim();
         resultsList.innerHTML = '';
         selectedMed = null;
 
-        if (!query) { resultsList.classList.add('hidden'); return; }
-
-        const matches = medsData.filter(m => m.name.toLowerCase().includes(query));
-
-        if (matches.length === 0) {
-            resultsList.innerHTML = '<li class="px-6 py-4 text-slate-500 italic">No medicines found</li>';
-        } else {
-            matches.forEach(m => {
-                const li = document.createElement('li');
-                li.className = "px-6 py-4 hover:bg-blue-50 cursor-pointer border-b border-slate-100 last:border-0 transition-colors";
-                li.innerHTML = `<span class="font-bold text-slate-800">${m.name}</span> <span class="text-slate-500 float-right font-medium">$${m.price.toFixed(2)}</span>`;
-                li.addEventListener('click', () => {
-                    searchInput.value = m.name;
-                    selectedMed = m;
-                    resultsList.classList.add('hidden');
-                    qtyInput.focus();
-                    qtyInput.select();
-                });
-                resultsList.appendChild(li);
-            });
+        if (!query) { 
+            resultsList.classList.add('hidden'); 
+            searchSpinner.classList.add('hidden');
+            return; 
         }
-        resultsList.classList.remove('hidden');
+
+        // Show loading spinner
+        resultsList.classList.add('hidden');
+        searchSpinner.classList.remove('hidden');
+
+        // Wait 300ms after user stops typing before calling the API
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(async () => {
+            try {
+                const response = await fetch(`/api/search-medicines?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                searchSpinner.classList.add('hidden');
+                
+                if (data.length === 0) {
+                    resultsList.innerHTML = '<li class="px-6 py-4 text-slate-500 italic">No medicines found</li>';
+                } else {
+                    data.forEach(m => {
+                        const li = document.createElement('li');
+                        li.className = "px-6 py-4 hover:bg-blue-50 cursor-pointer border-b border-slate-100 last:border-0 transition-colors";
+                        
+                        // Show out of stock warning if needed
+                        const stockText = m.stock === 0 ? '<span class="text-red-500 text-xs ml-2">(Out of Stock)</span>' : `<span class="text-slate-400 text-xs ml-2">(${m.stock} in stock)</span>`;
+                        
+                        li.innerHTML = `<span class="font-bold text-slate-800">${m.name}</span> ${stockText} <span class="text-slate-500 float-right font-medium">$${m.price.toFixed(2)}</span>`;
+                        
+                        li.addEventListener('click', () => {
+                            searchInput.value = m.name;
+                            selectedMed = m;
+                            resultsList.classList.add('hidden');
+                            qtyInput.focus();
+                            qtyInput.select();
+                        });
+                        resultsList.appendChild(li);
+                    });
+                }
+                resultsList.classList.remove('hidden');
+            } catch (err) {
+                searchSpinner.classList.add('hidden');
+                showToast("Failed to connect to server", "error");
+            }
+        }, 300);
     });
 
     document.addEventListener('click', (e) => {
@@ -121,13 +147,26 @@
     });
 
     document.getElementById('add-btn').addEventListener('click', () => {
-        if (!selectedMed) { searchInput.focus(); return; }
+        if (!selectedMed) { 
+            showToast("Please select a medicine from the list first.", "error"); 
+            searchInput.focus(); 
+            return; 
+        }
+        
+        // Optional: Prevent adding more than what's in stock
+        if (selectedMed.stock <= 0) {
+            showToast("This medicine is out of stock!", "error");
+            return;
+        }
+
         const qty = parseInt(qtyInput.value);
         if (qty <= 0) return;
 
         const existing = cart.find(c => c.id === selectedMed.id);
         if (existing) { existing.qty += qty; } 
         else { cart.push({ id: selectedMed.id, name: selectedMed.name, price: selectedMed.price, qty }); }
+        
+        showToast(`${selectedMed.name} added to order`);
         
         searchInput.value = ''; selectedMed = null; qtyInput.value = 1; searchInput.focus(); render();
     });

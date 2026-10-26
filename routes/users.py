@@ -1,18 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session
-from functools import wraps
 from models import db, User, bcrypt
-from routes.auth import login_required
+from routes.auth import login_required, admin_required
 
 users_bp = Blueprint('users', __name__)
-
-# Custom decorator to restrict access to Admins only
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if session.get('role') != 'admin':
-            return "Access Denied: Admins Only", 403
-        return f(*args, **kwargs)
-    return decorated_function
 
 def is_strong_password(password):
     """Check if password is at least 8 chars, contains a letter and a number."""
